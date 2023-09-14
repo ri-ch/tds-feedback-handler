@@ -1,0 +1,34 @@
+[package]
+name = "tds-feedback-handler"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.75"
+askama = { version = "0.12.0", features = ["with-axum"] }
+askama_axum = "0.4.0"
+axum = { version = "0.7.5", features = ["json"] }
+axum-sessions = "0.5.0"
+axum_csrf = { version = "0.9.0", features = ["layer"] }
+chrono = "0.4.30"
+rand = "0.8.5"
+rustls = "0.21.7"
+serde = { version = "1.0.188", features = ["derive"] }
+tokio = { version = "1.32.0", features = ["rt", "tokio-macros", "full"] }
+tokio-postgres = { version = "0.7.10", features = ["with-chrono-0_4"] }
+tokio-postgres-rustls = "0.10.0"
+tower = { version = "0.4.13", features = ["limit", "buffer"] }
+tower-http = { version = "0.5.2", features = ["fs"] }
+tracing = "0.1.37"
+tracing-subscriber = "0.3.17"
+validator = { version = "0.18.0", features = ["derive"] }
+validator_derive = "0.18.0"
+webpki-roots = "0.25.2"
+
+[profile.size-opt2]
+inherits = "release"
+strip = true # strip symbols from the binary
+opt-level = "z" # Optimize for size
+lto = true # Link Time Optimization (LTO)
