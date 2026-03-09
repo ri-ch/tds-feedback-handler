@@ -6,9 +6,10 @@
 app = 'tds-feedback-handler'
 primary_region = 'lhr'
 kill_signal = 'SIGINT'
-kill_timeout = '5s'
+kill_timeout = '15s'
 
 [build]
+  dockerfile = "Dockerfile"
 
 [env]
   PORT = '8080'
@@ -18,8 +19,15 @@ kill_timeout = '5s'
   force_https = true
   auto_stop_machines = 'stop'
   auto_start_machines = true
-  min_machines_running = 0
+  min_machines_running = 1
   processes = ['app']
+
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "15s"
+    method = "GET"
+    path = "/status"
+    timeout = "3s"
 
 
 [[vm]]
