@@ -1,12 +1,11 @@
-use std::{env, sync::Arc};
-use tokio_postgres::Client;
-use tracing::error;
+use deadpool_postgres::{Manager, Pool};
+use std::env;
 
 use crate::tls;
 
 #[derive(Clone)]
 pub struct AppState {
-    pub client: Arc<Client>,
+    pub pool: Pool,
 }
 
 impl AppState {
@@ -14,18 +13,16 @@ impl AppState {
         let connection_string =
             env::var("TDS_FB_CONNECTION_STRING").expect("Failed to read connection string");
 
-        let (client, cx) = tokio_postgres::connect(&connection_string, tls::create_tls_config())
-            .await
-            .expect("Failed to create database connection");
+        let pg_config: tokio_postgres::Config = connection_string
+            .parse()
+            .expect("Failed to parse connection string");
 
-        tokio::spawn(async move {
-            if let Err(e) = cx.await {
-                error!("Connection error: {}", e);
-            }
-        });
+        let manager = Manager::new(pg_config, tls::create_tls_config());
+        let pool = Pool::builder(manager)
+            .max_size(16)
+            .build()
+            .expect("Failed to create connection pool");
 
-        AppState {
-            client: Arc::new(client),
-        }
+        AppState { pool }
     }
 }

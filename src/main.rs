@@ -4,27 +4,25 @@ use axum::{
     error_handling::HandleErrorLayer,
     extract::{DefaultBodyLimit, State},
     http::StatusCode,
+    response::Response,
     routing::{get, post},
     BoxError, Form, Router,
 };
 use axum_csrf::{CsrfConfig, CsrfLayer, CsrfToken};
-use axum_sessions::async_session::log::warn;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use tower::{buffer::BufferLayer, limit::RateLimitLayer, ServiceBuilder};
-use tower_http::services::ServeDir;
-use tracing::debug;
+use tracing::{debug, warn};
 use validator::Validate;
 
 mod appstate;
 mod errors;
 mod tls;
-mod types;
 
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::DEBUG)
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .init();
 
     let state = appstate::AppState::new().await;
@@ -40,17 +38,20 @@ async fn main() {
         }))
         .layer(DefaultBodyLimit::max(1024))
         .layer(BufferLayer::new(1024))
-        .layer(RateLimitLayer::new(1, Duration::from_secs(30)));
+        // Note: global rate limit, not per-IP. Use tower-governor for per-IP limiting.
+        .layer(RateLimitLayer::new(5, Duration::from_secs(1)));
 
     let app = Router::new()
-        .route_service("/assets", ServeDir::new("./public"))
         .route("/submit", post(insert_record).layer(inbound_layer))
         .route("/", get(home))
         .route("/status", get(status))
         .with_state(state)
         .layer(CsrfLayer::new(csrf_config));
 
-    let port = 8080;
+    let port: u16 = std::env::var("PORT")
+        .ok()
+        .and_then(|p| p.parse().ok())
+        .unwrap_or(8080);
 
     let message = format!("Running the server on port {}", port);
 
@@ -80,7 +81,7 @@ async fn home(token: CsrfToken) -> impl IntoResponse {
         name: None,
         message: None,
     };
-    
+
     (token, page)
 }
 
@@ -92,15 +93,15 @@ async fn insert_record(
     token: CsrfToken,
     State(state): State<appstate::AppState>,
     Form(page): Form<Page>,
-) -> Result<impl IntoResponse, errors::AppError> {
+) -> Result<Response, errors::AppError> {
     token.verify(&page.authenticity_token)?;
 
     if let Err(e) = page.validate() {
         warn!("{}", e);
-        return Ok((StatusCode::BAD_REQUEST, "Invalid form values"));
+        return Ok((StatusCode::BAD_REQUEST, e.to_string()).into_response());
     }
 
-    let client = state.client;
+    let client = state.pool.get().await?;
 
     let insert_statement = client
         .prepare("INSERT INTO feedback_response (name, response, ts) VALUES ($1, $2, $3)")
@@ -108,12 +109,12 @@ async fn insert_record(
 
     let ts = chrono::Local::now();
 
-    let name = page.name.unwrap();
-    let message = page.message.unwrap();
+    let name = page.name.expect("name validated as required");
+    let message = page.message.expect("message validated as required");
 
     client
         .query(&insert_statement, &[&name, &message, &ts])
         .await?;
 
-    Ok((StatusCode::OK, "OK"))
+    Ok((StatusCode::OK, "OK").into_response())
 }
