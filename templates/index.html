@@ -3,13 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Feedback</title>
 </head>
 <body>
     <form method="post" action="/submit">
         <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"/>
-        <input type="text" name="name" maxlength="100" required/>
-        <input type="text" name="message" maxlength="400" required/>
+        <label for="name">Name</label>
+        <input id="name" type="text" name="name" maxlength="100" required aria-required="true"/>
+        <label for="message">Message</label>
+        <input id="message" type="text" name="message" maxlength="400" required aria-required="true"/>
         <input id="button" type="submit" value="Submit" tabindex="4" />
     </form>
 </body>

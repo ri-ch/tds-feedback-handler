@@ -1,0 +1,77 @@
+{
+  "name": "Rust + AWS CDK + Claude Code",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "runArgs": ["--memory=4g", "--cpus=8", "--rm"],
+
+  // Mount Claude Code config for session/settings persistence across rebuilds
+  "mounts": [
+    "source=${localEnv:HOME}${localEnv:USERPROFILE}/.claude,target=/home/vscode/.claude,type=bind,consistency=cached",
+    "source=${localEnv:HOME}${localEnv:USERPROFILE}/.claude.json,target=/home/vscode/.claude.json,type=bind,consistency=cached"
+  ],
+
+  // Forward AWS credentials and Anthropic API key from host environment
+  "remoteEnv": {
+    "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}",
+    "AWS_ACCESS_KEY_ID": "${localEnv:AWS_ACCESS_KEY_ID}",
+    "AWS_SECRET_ACCESS_KEY": "${localEnv:AWS_SECRET_ACCESS_KEY}",
+    "AWS_SESSION_TOKEN": "${localEnv:AWS_SESSION_TOKEN}",
+    "AWS_DEFAULT_REGION": "${localEnv:AWS_DEFAULT_REGION}",
+    "AWS_PROFILE": "${localEnv:AWS_PROFILE}",
+    "GITHUB_TOKEN": "${localEnv:TDS_GITHUB_TOKEN}"
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        // Rust
+        "rust-lang.rust-analyzer",
+        // "vadimcn.vscode-lldb",
+        // "tamasfe.even-better-toml",
+
+        // AWS / CDK
+        // "amazonwebservices.aws-toolkit-vscode",
+        // "amazonwebservices.amazon-q-vscode",
+
+        // Claude Code
+        "Anthropic.claude-code",
+
+        // TypeScript (CDK is TypeScript-based)
+        // "dbaeumer.vscode-eslint",
+        // "esbenp.prettier-vscode",
+
+        // General DX
+        "eamodio.gitlens",
+        // "usernamehw.errorlens",
+        // "streetsidesoftware.code-spell-checker",
+        // "github.vscode-pull-request-github"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "editor.rulers": [100],
+        "[rust]": {
+          "editor.defaultFormatter": "rust-lang.rust-analyzer"
+        },
+        "[typescript]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        // "rust-analyzer.checkOnSave": true,
+        // "rust-analyzer.check.command": "clippy",
+        // "rust-analyzer.cargo.features": "all",
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  },
+
+  // AWS credentials file mount (for profile-based auth)
+  // Uncomment if you use ~/.aws rather than environment variables
+  // "mounts": [
+  //   "source=${localEnv:HOME}/.aws,target=/home/vscode/.aws,type=bind,consistency=cached,readonly"
+  // ],
+
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+
+  "remoteUser": "vscode"
+}
